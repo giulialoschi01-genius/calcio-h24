@@ -16,26 +16,15 @@
 #    → copia il "Client ID" che ti viene mostrato
 # 4. Sostituisci TUO-USERNAME qui sotto con il tuo username GitHub
 # ═══════════════════════════════════════════════════════════════
-
 backend:
   name: github
-  # ⚠️ MODIFICA OBBLIGATORIA: sostituisci TUO-USERNAME con il tuo username GitHub
   repo: giulialoschi01-genius/calcio-h24
   branch: main
-  # Proxy OAuth gratuito di Netlify (funziona anche senza hosting su Netlify)
-  
 
-# Cartella dove vengono salvate le immagini caricate dal pannello CMS
 media_folder: "images/uploads"
 public_folder: "/images/uploads"
 
-# Lingua dell'interfaccia del pannello di amministrazione
 locale: it
-
-# ── Collezione: Le Nostre Notizie ──────────────────────────────
-# Ogni articolo viene salvato come file Markdown in content/notizie/
-# con nome slug generato automaticamente dalla data e dal titolo.
-# update.py li legge e li compila in data/notizie_redazione.json.
 
 collections:
   - name: "notizie"
@@ -43,16 +32,13 @@ collections:
     label_singular: "Notizia"
     folder: "content/notizie"
     create: true
-    # Formato nome file: AAAA-MM-GG-titolo-slug.md
     slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
-    # Ordinamento di default per data discendente
     sortable_fields: ["date", "title"]
     summary: "{{title}} — {{date}}"
     fields:
       - label: "Titolo"
         name:  "title"
         widget: "string"
-        hint:  "Titolo dell'articolo (max 100 caratteri consigliato)"
 
       - label: "Data di pubblicazione"
         name:  "date"
@@ -60,7 +46,6 @@ collections:
         format: "YYYY-MM-DD"
         date_format: "DD/MM/YYYY"
         time_format: false
-        default: ""
 
       - label: "Autore"
         name:  "author"
@@ -72,13 +57,11 @@ collections:
         name:  "image"
         widget: "image"
         required: false
-        hint:  "Immagine di anteprima (consigliata 1200×630 px)"
 
-      - label: "Sommario / Anteprima"
+      - label: "Sommario"
         name:  "description"
         widget: "text"
         required: false
-        hint:  "Breve descrizione visibile nelle card (max 200 caratteri)"
 
       - label: "Contenuto articolo"
         name:  "body"
