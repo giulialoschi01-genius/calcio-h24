@@ -30,7 +30,8 @@ jobs:
   aggiorna-dati:
     name: Scarica e aggiorna dati
     runs-on: ubuntu-latest
-
+env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # ← aggiunta questa riga
     steps:
 
       # ── 1. Checkout del repository ──────────────────────────
