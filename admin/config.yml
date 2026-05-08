@@ -20,7 +20,7 @@
 backend:
   name: github
   # ⚠️ MODIFICA OBBLIGATORIA: sostituisci TUO-USERNAME con il tuo username GitHub
-  repo: TUO-USERNAME/calcio-h24
+  repo: giulialoschi01-genius/calcio-h24
   branch: main
   # Proxy OAuth gratuito di Netlify (funziona anche senza hosting su Netlify)
   base_url: https://api.netlify.com
