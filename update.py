@@ -299,7 +299,8 @@ def carica_notizie_redazione() -> list:
                 'titolo':   post.get('title', '') or '',
                 'data':     str(post.get('date', '')) or '',
                 'autore':   post.get('author', 'Redazione Calcio H24') or 'Redazione Calcio H24',
-                'immagine': post.get('image', '') or '',
+                immagine_raw = post.get('image', '') or '',
+                'immagine': immagine_raw.lstrip('/') if isinstance(immagine_raw, str) else '',
                 'sommario': post.get('description', '') or '',
                 'testo':    post.content or '',
             })
