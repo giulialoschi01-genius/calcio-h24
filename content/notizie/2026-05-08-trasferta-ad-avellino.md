@@ -2,7 +2,7 @@
 title: Trasferta ad Avellino!
 date: 2026-05-08
 author: Redazione Calcio H24
-image: ''
+image: /images/uploads/PHOTO-2026-05-08-17-24-35.jpg
 description: ''
 ---
 
