@@ -1,28 +1,13 @@
-# ═══════════════════════════════════════════════════════════════
-# aggiornamento-giornaliero.yml — Calcio H24
-#
-# GitHub Action che esegue update.py ogni giorno alle 07:00
-# ora italiana (estate CEST = UTC+2 → 05:00 UTC).
-# In inverno (CET = UTC+1) corrisponde alle 06:00 locali:
-# per aggiustare cambia il cron a "0 6 * * *" da ottobre.
-#
-# Prerequisiti (da impostare in GitHub → Settings → Secrets):
-#   API_FOOTBALL_KEY  → la tua chiave API-Football
-#   NEWSAPI_KEY       → la tua chiave NewsAPI
-# ═══════════════════════════════════════════════════════════════
-
-name: 🔄 Aggiornamento Giornaliero Dati
+name: Aggiornamento Giornaliero Dati
 
 on:
-  # Esecuzione schedulata: 05:00 UTC ogni giorno (= 07:00 CEST estiva)
   schedule:
     - cron: '0 5 * * *'
-
-  # Permette di lanciare l'aggiornamento manualmente dalla UI di GitHub
-  # (Actions → seleziona workflow → Run workflow)
   workflow_dispatch:
 
-# Permesso di scrittura necessario per il git push dei JSON aggiornati
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -30,50 +15,37 @@ jobs:
   aggiorna-dati:
     name: Scarica e aggiorna dati
     runs-on: ubuntu-latest
-env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # ← aggiunta questa riga
+
     steps:
 
-      # ── 1. Checkout del repository ──────────────────────────
-      - name: 📥 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 2. Configura Python ──────────────────────────────────
-      - name: 🐍 Configura Python 3.11
+      - name: Configura Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'   # Cache delle dipendenze per velocizzare i run successivi
+          cache: 'pip'
 
-      # ── 3. Installa dipendenze ───────────────────────────────
-      - name: 📦 Installa dipendenze Python
+      - name: Installa dipendenze Python
         run: pip install -r requirements.txt
 
-      # ── 4. Esegui lo script di aggiornamento ────────────────
-      # Le API Key vengono passate come variabili d'ambiente
-      # dai GitHub Secrets (non appaiono mai nei log)
-      - name: 🔄 Esegui update.py
+      - name: Esegui update.py
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-          NEWSAPI_KEY:      ${{ secrets.NEWSAPI_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
         run: python update.py
 
-      # ── 5. Commit e push dei file JSON aggiornati ────────────
-      - name: 📤 Commit e push dati aggiornati
+      - name: Commit e push dati aggiornati
         run: |
           git config user.name  "Calcio H24 Bot"
           git config user.email "bot@calcio-h24.github.io"
-
-          # Aggiunge solo la cartella data/ (i JSON generati)
           git add data/
-
-          # Esegue il commit solo se ci sono modifiche effettive
-          # (evita commit inutili se i dati non sono cambiati)
           if git diff --staged --quiet; then
-            echo "ℹ️  Nessuna modifica ai dati — commit saltato"
+            echo "Nessuna modifica ai dati - commit saltato"
           else
-            git commit -m "🤖 Aggiornamento automatico — $(date +'%d/%m/%Y %H:%M UTC')"
+            git commit -m "Aggiornamento automatico - $(date +'%d/%m/%Y %H:%M UTC')"
             git push
           fi
