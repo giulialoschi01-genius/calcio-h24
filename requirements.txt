@@ -1,0 +1,6 @@
+# Dipendenze Python per update.py
+# Installa con: pip install -r requirements.txt
+
+requests>=2.31.0          # Chiamate HTTP a API-Football e NewsAPI
+feedparser>=6.0.11        # Parsing feed RSS/Atom
+python-frontmatter>=1.1.0 # Lettura file Markdown con frontmatter YAML (Decap CMS)
