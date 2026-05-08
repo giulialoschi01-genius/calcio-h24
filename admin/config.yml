@@ -23,8 +23,7 @@ backend:
   repo: giulialoschi01-genius/calcio-h24
   branch: main
   # Proxy OAuth gratuito di Netlify (funziona anche senza hosting su Netlify)
-  base_url: https://api.netlify.com
-  auth_endpoint: auth
+  
 
 # Cartella dove vengono salvate le immagini caricate dal pannello CMS
 media_folder: "images/uploads"
