@@ -164,7 +164,7 @@ def scarica_feed_rss(nome: str, url: str) -> list:
             if data_parsed:
                 try:
                     eta_giorni = (time.time() - time.mktime(data_parsed)) / 86400
-                    if eta_giorni > 10:
+                    if eta_giorni > 30:
                         continue
                 except Exception:
                     pass  # data non convertibile → accetta
