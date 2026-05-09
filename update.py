@@ -36,14 +36,13 @@ PERCORSO_NOTIZIE_RED   = os.path.join(BASE_DIR, 'data', 'notizie_redazione.json'
 PERCORSO_CONTENT_NOTIZIE = os.path.join(BASE_DIR, 'content', 'notizie')
 
 RSS_FEEDS = {
-    'Gazzetta dello Sport': 'https://www.gazzetta.it/rss/calcio.xml',
     'Corriere dello Sport': 'https://www.corrieredellosport.it/rss',
     'Tuttosport':           'https://www.tuttosport.com/rss/home.xml',
     'Sky Sport':            'https://feeds.sky.it/skysport/rss.xml',
     'Calciomercato.com':    'https://www.calciomercato.com/rss',
 }
 
-MAX_PER_FEED    = 15
+MAX_PER_FEED    = 3
 RSS_TIMEOUT     = 12   # secondi
 API_TIMEOUT     = 20   # secondi
 USER_AGENT      = 'Mozilla/5.0 (compatible; CalcioH24Bot/1.0)'
