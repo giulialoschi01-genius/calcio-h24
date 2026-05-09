@@ -39,10 +39,20 @@ STAGIONE          = 2024  # Stagione corrente (2024-2025)
 
 # Feed RSS degli editori italiani
 RSS_FEEDS = {
-    'Gazzetta dello Sport': 'https://www.gazzetta.it/rss/home.xml',
-    'Sky Sport':            'https://feeds.sky.it/skysport/rss.xml',
+    
+    # Feed sezione calcio di Gazzetta (più aggiornato della home generica)
+    'Gazzetta - Calcio':    'https://www.gazzetta.it/rss/calcio.xml',
+    # Feed Serie A specifico di Gazzetta
+    'Gazzetta - Serie A':   'https://www.gazzetta.it/rss/serie-a.xml',
+    # Sky Sport calcio italiano
+    'Sky Sport':            'https://sport.sky.it/sport/rss/sport_calcio_italiano.xml',
+    # Corriere dello Sport
     'Corriere dello Sport': 'https://www.corrieredellosport.it/rss',
+    # Tuttosport
     'Tuttosport':           'https://www.tuttosport.com/rss/home.xml',
+    # Tuttomercatoweb — feed molto affidabile e sempre aggiornato
+    'Tuttomercatoweb':      'https://feeds.tuttomercatoweb.com/rss/?c=1',
+
 }
 
 # Parole chiave per filtrare le notizie RSS pertinenti al calcio
