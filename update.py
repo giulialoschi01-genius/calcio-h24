@@ -63,7 +63,7 @@ KEYWORDS_CALCIO = [
 ]
 
 # Keyword per NewsAPI
-NEWSAPI_KEYWORDS = ['Serie A', 'Champions League']
+NEWSAPI_KEYWORDS = []  # NewsAPI disattivato — si usano solo i feed RSS
 
 # Percorsi file di output
 PERCORSO_CLASSIFICHE    = 'data/classifiche.json'
@@ -177,12 +177,11 @@ def estrai_immagine_entry(entry) -> str:
 
 def e_notizia_calcio(titolo: str, sommario: str) -> bool:
     """
-    Filtra le notizie tenendo solo quelle legate al calcio.
-    Controlla se titolo o sommario contengono almeno una keyword.
+    Con fonti già 100% sportive il filtro è minimo:
+    esclude solo i rarissimi articoli palesemente fuori tema.
     """
-    testo = (titolo + ' ' + sommario).lower()
-    return any(kw in testo for kw in KEYWORDS_CALCIO)
-
+    return True
+  
 def e_notizia_recente(entry, giorni_max: int = 7) -> bool:
     """
     Restituisce True se la notizia è stata pubblicata
