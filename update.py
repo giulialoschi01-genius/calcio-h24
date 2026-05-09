@@ -2,17 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 update.py — Calcio H24
-Script di aggiornamento giornaliero dati.
-Eseguito ogni mattina alle 07:00 (ora italiana) da GitHub Actions.
-
-Cosa fa:
-  1. Scarica classifica Serie A e Champions League da API-Football
-  2. Scarica notizie RSS da Gazzetta, Sky, Corriere, Tuttosport
-  3. Scarica notizie da NewsAPI (keywords: Serie A, Champions League)
-  4. Compila gli articoli di Decap CMS (content/notizie/*.md)
-  5. Salva tutto in data/classifiche.json e data/notizie_rss.json
-     e data/notizie_redazione.json
-
+Aggiornamento giornaliero: classifiche + notizie RSS + notizie redazione.
 Le API Key vengono lette dalle variabili d'ambiente GitHub Secrets.
 """
 
@@ -20,72 +10,49 @@ import os
 import json
 import re
 import glob
+import time
 from datetime import datetime, timezone
 
 import requests
 import feedparser
-import frontmatter  # pip install python-frontmatter
+import frontmatter
 
-# ─── CONFIGURAZIONE ────────────────────────────────────────────────────────────
+# ─── CONFIGURAZIONE ────────────────────────────────────────────
 
-# Le chiavi API vengono iniettate da GitHub Secrets (NON hardcodarle mai!)
 API_FOOTBALL_KEY = os.environ.get('API_FOOTBALL_KEY', '')
 NEWSAPI_KEY      = os.environ.get('NEWSAPI_KEY', '')
 
-# ID campionati su API-Football (v3)
-LEAGUE_SERIE_A    = 135   # Serie A italiana
-LEAGUE_CHAMPIONS  = 2     # UEFA Champions League
-STAGIONE          = 2024  # Stagione corrente (2024-2025)
+LEAGUE_SERIE_A   = 135
+LEAGUE_CHAMPIONS = 2
+STAGIONE         = 2024
 
-# Feed RSS degli editori italiani
+# ── Cinque fonti RSS scelte ────────────────────────────────────
 RSS_FEEDS = {
-    
-    # Feed sezione calcio di Gazzetta (più aggiornato della home generica)
-    'Gazzetta - Calcio':    'https://www.gazzetta.it/rss/calcio.xml',
-    # Feed Serie A specifico di Gazzetta
-    'Gazzetta - Serie A':   'https://www.gazzetta.it/rss/serie-a.xml',
-    # Sky Sport calcio italiano
-    'Sky Sport':            'https://sport.sky.it/sport/rss/sport_calcio_italiano.xml',
-    # Corriere dello Sport
+    'Gazzetta dello Sport': 'https://www.gazzetta.it/rss/calcio.xml',
     'Corriere dello Sport': 'https://www.corrieredellosport.it/rss',
-    # Tuttosport
     'Tuttosport':           'https://www.tuttosport.com/rss/home.xml',
-    # Tuttomercatoweb — feed molto affidabile e sempre aggiornato
-    'Tuttomercatoweb':      'https://feeds.tuttomercatoweb.com/rss/?c=1',
-
+    'Sky Sport':            'https://feeds.sky.it/skysport/rss.xml',
+    'Calciomercato.com':    'https://www.calciomercato.com/rss',
 }
 
-# Parole chiave per filtrare le notizie RSS pertinenti al calcio
-KEYWORDS_CALCIO = [
-    'serie a', 'champions', 'calcio', 'partita', 'gol', 'squadra',
-    'nazionale', 'inter', 'milan', 'juve', 'juventus', 'napoli', 'roma',
-    'modena', 'lazio', 'fiorentina', 'atalanta', 'torino',
-]
+# NewsAPI disattivato — solo RSS
+NEWSAPI_KEYWORDS = []
 
-# Keyword per NewsAPI
-NEWSAPI_KEYWORDS = []  # NewsAPI disattivato — si usano solo i feed RSS
-
-# Percorsi file di output
-PERCORSO_CLASSIFICHE    = 'data/classifiche.json'
-PERCORSO_NOTIZIE_RSS    = 'data/notizie_rss.json'
-PERCORSO_NOTIZIE_RED    = 'data/notizie_redazione.json'
+PERCORSO_CLASSIFICHE     = 'data/classifiche.json'
+PERCORSO_NOTIZIE_RSS     = 'data/notizie_rss.json'
+PERCORSO_NOTIZIE_RED     = 'data/notizie_redazione.json'
 PERCORSO_CONTENT_NOTIZIE = 'content/notizie'
 
-# Numero massimo notizie per fonte RSS
-MAX_PER_FEED = 12
+MAX_PER_FEED = 15
 
-# ─── FUNZIONI CLASSIFICHE ──────────────────────────────────────────────────────
+# ─── CLASSIFICHE ───────────────────────────────────────────────
 
 def scarica_classifica(league_id: int, stagione: int) -> list:
-    """
-    Chiama l'endpoint /standings di API-Football.
-    Restituisce la lista di squadre normalizzata, o lista vuota in caso di errore.
-    """
     if not API_FOOTBALL_KEY:
         print('  ⚠ API_FOOTBALL_KEY non impostata — skip classifica')
         return []
 
-    url = 'https://v3.football.api-sports.io/standings'
+    url     = 'https://v3.football.api-sports.io/standings'
     headers = {'x-apisports-key': API_FOOTBALL_KEY}
     params  = {'league': league_id, 'season': stagione}
 
@@ -94,17 +61,8 @@ def scarica_classifica(league_id: int, stagione: int) -> list:
         risposta.raise_for_status()
         dati = risposta.json()
 
-        # La risposta ha struttura: response[0].league.standings (lista di gruppi)
         standings_raw = dati['response'][0]['league']['standings']
-
-        # In Serie A è una lista singola; in Champions potrebbe essere per gironi.
-        # Dalla stagione 2024-25 UCL usa formato campionato (lista singola).
-        if isinstance(standings_raw[0], list):
-            # Formato a gironi: prende il primo gruppo (o appiattisce tutto)
-            standings = standings_raw[0]
-        else:
-            standings = standings_raw
-
+        standings = standings_raw[0] if isinstance(standings_raw[0], list) else standings_raw
         return [normalizza_squadra(s) for s in standings]
 
     except (KeyError, IndexError) as e:
@@ -116,14 +74,9 @@ def scarica_classifica(league_id: int, stagione: int) -> list:
 
 
 def normalizza_squadra(entry: dict) -> dict:
-    """
-    Trasforma una entry grezza di API-Football nel formato
-    semplificato usato dal frontend.
-    """
     team  = entry.get('team', {})
     stats = entry.get('all', {})
     gol   = stats.get('goals', {})
-
     return {
         'posizione':       entry.get('rank', 0),
         'squadra':         team.get('name', ''),
@@ -140,187 +93,107 @@ def normalizza_squadra(entry: dict) -> dict:
         'descrizione':     entry.get('description', ''),
     }
 
-# ─── FUNZIONI RSS ──────────────────────────────────────────────────────────────
+# ─── RSS ────────────────────────────────────────────────────────
 
 def estrai_immagine_entry(entry) -> str:
-    """
-    Cerca l'URL dell'immagine anteprima in tutti i campi comuni dei feed RSS.
-    Restituisce l'URL o stringa vuota se non trovata.
-    """
-    # 1. media:thumbnail (standard RSS)
-    if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
-        return entry.media_thumbnail[0].get('url', '')
+    """Cerca immagine anteprima nei campi RSS più comuni."""
+
+    # 1. media:thumbnail
+    try:
+        if entry.media_thumbnail:
+            return entry.media_thumbnail[0].get('url', '')
+    except AttributeError:
+        pass
 
     # 2. media:content
-    if hasattr(entry, 'media_content') and entry.media_content:
-        url = entry.media_content[0].get('url', '')
-        if url:
-            return url
+    try:
+        if entry.media_content:
+            url = entry.media_content[0].get('url', '')
+            if url:
+                return url
+    except AttributeError:
+        pass
 
-    # 3. enclosure (podcast/media)
-    if hasattr(entry, 'enclosures') and entry.enclosures:
+    # 3. enclosure immagine
+    try:
         for enc in entry.enclosures:
             if enc.get('type', '').startswith('image'):
                 return enc.get('href', '')
+    except AttributeError:
+        pass
 
-    # 4. Cerca tag <img> nel summary HTML
+    # 4. tag <img> nel sommario HTML
     sommario = getattr(entry, 'summary', '') or ''
     match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', sommario)
     if match:
         url = match.group(1)
-        # Esclude immagini traccianti (1x1, pixel)
         if not any(x in url for x in ['1x1', 'pixel', 'tracking', 'spacer']):
             return url
 
     return ''
 
 
-def e_notizia_calcio(titolo: str, sommario: str) -> bool:
-    """
-    Con fonti già 100% sportive il filtro è minimo:
-    esclude solo i rarissimi articoli palesemente fuori tema.
-    """
-    return True
-  
-def e_notizia_recente(entry, giorni_max: int = 7) -> bool:
-    """
-    Restituisce True se la notizia è stata pubblicata
-    negli ultimi 'giorni_max' giorni.
-    Se la data non è leggibile, accetta la notizia per sicurezza.
-    """
-    import time
-    data_raw = entry.get('published_parsed') or entry.get('updated_parsed')
-    if not data_raw:
-        return True  # data assente → non escludere
-    try:
-        eta_giorni = (time.time() - time.mktime(data_raw)) / 86400
-        return eta_giorni <= giorni_max
-    except Exception:
-        return True  # errore di parsing → non escludere
-      
 def scarica_feed_rss(nome: str, url: str) -> list:
     """
-    Analizza un feed RSS con feedparser.
-    Restituisce le notizie filtrate per tema calcio.
+    Scarica e analizza un feed RSS.
+    NON filtra per data (troppo inaffidabile sui feed italiani).
+    NON scarta per bozo (molti feed validi hanno piccoli difetti XML).
     """
     notizie = []
     try:
-        # feedparser gestisce richiesta HTTP e parsing XML/Atom
-        feed = feedparser.parse(url)
+        # Header User-Agent: evita blocchi da parte di alcuni server
+        feed = feedparser.parse(
+            url,
+            agent='Mozilla/5.0 (compatible; CalcioH24Bot/1.0)'
+        )
 
-        if feed.bozo and not feed.entries:
-            print(f'  ✗ Feed malformato o irraggiungibile: {nome}')
+        if not feed.entries:
+            print(f'  ✗ {nome}: feed vuoto o irraggiungibile (url: {url})')
             return []
 
-        for entry in feed.entries[:MAX_PER_FEED * 2]:  # legge più per poter filtrare
-            titolo   = (entry.get('title', '') or '').strip()
-            sommario = (entry.get('summary', '') or '').strip()
-
-            # Salta notizie non calcistiche
-            if not e_notizia_calcio(titolo, sommario):
-                continue
-            # Scarta notizie più vecchie di 7 giorni
-            if not e_notizia_recente(entry):
+        for entry in feed.entries[:MAX_PER_FEED]:
+            titolo = (entry.get('title', '') or '').strip()
+            if not titolo:
                 continue
 
+            link     = entry.get('link', '')
+            data_raw = entry.get('published', entry.get('updated', ''))
             immagine = estrai_immagine_entry(entry)
 
             notizie.append({
                 'fonte':    nome,
                 'titolo':   titolo,
-                'link':     entry.get('link', ''),
-                'data':     entry.get('published', entry.get('updated', '')),
+                'link':     link,
+                'data':     data_raw,
                 'immagine': immagine,
             })
 
-            if len(notizie) >= MAX_PER_FEED:
-                break
-
-        print(f'  ✓ RSS {nome}: {len(notizie)} notizie calcio trovate')
+        print(f'  ✓ {nome}: {len(notizie)} notizie')
 
     except Exception as e:
         print(f'  ✗ Errore RSS {nome}: {e}')
 
     return notizie
 
-
-# ─── FUNZIONI NEWSAPI ──────────────────────────────────────────────────────────
-
-def scarica_newsapi(keyword: str) -> list:
-    """
-    Chiama NewsAPI per la keyword indicata.
-    Restituisce lista di notizie o lista vuota in caso di errore.
-    NewsAPI va chiamato server-side (il piano free blocca le richieste browser).
-    """
-    if not NEWSAPI_KEY:
-        print('  ⚠ NEWSAPI_KEY non impostata — skip NewsAPI')
-        return []
-
-    url = 'https://newsapi.org/v2/everything'
-    params = {
-        'q':        keyword,
-        'language': 'it',
-        'sortBy':   'publishedAt',
-        'pageSize': 15,
-        'apiKey':   NEWSAPI_KEY,
-    }
-
-    try:
-        risposta = requests.get(url, params=params, timeout=20)
-        risposta.raise_for_status()
-        dati = risposta.json()
-
-        if dati.get('status') != 'ok':
-            print(f'  ✗ NewsAPI errore per "{keyword}": {dati.get("message")}')
-            return []
-
-        articoli = []
-        for art in dati.get('articles', []):
-            # Salta le fonti "[Removed]" (contenuto rimosso da NewsAPI)
-            if art.get('title', '') in ('[Removed]', None, ''):
-                continue
-            articoli.append({
-                'fonte':    art.get('source', {}).get('name', 'NewsAPI'),
-                'titolo':   (art.get('title', '') or '').strip(),
-                'link':     art.get('url', ''),
-                'data':     art.get('publishedAt', ''),
-                'immagine': art.get('urlToImage', '') or '',
-            })
-
-        print(f'  ✓ NewsAPI "{keyword}": {len(articoli)} notizie')
-        return articoli
-
-    except requests.RequestException as e:
-        print(f'  ✗ Errore NewsAPI "{keyword}": {e}')
-        return []
-
-
-# ─── FUNZIONI NOTIZIE REDAZIONE (DECAP CMS) ───────────────────────────────────
+# ─── NOTIZIE REDAZIONE ─────────────────────────────────────────
 
 def carica_notizie_redazione() -> list:
-    """
-    Legge i file Markdown creati da Decap CMS in content/notizie/*.md
-    e li converte in dizionari pronti per il JSON.
-    Il frontmatter YAML contiene i metadati (titolo, data, autore, immagine).
-    Il corpo del file è il testo dell'articolo in Markdown.
-    """
+    """Legge i file Markdown pubblicati da Sveltia CMS."""
     notizie = []
 
-    # Cerca tutti i file .md nella cartella content/notizie/
     percorsi = sorted(
         glob.glob(os.path.join(PERCORSO_CONTENT_NOTIZIE, '*.md')),
-        reverse=True  # Ordine cronologico inverso (più recenti prima)
+        reverse=True
     )
 
     if not percorsi:
-        print(f'  ℹ Nessun articolo trovato in {PERCORSO_CONTENT_NOTIZIE}/')
+        print(f'  ℹ Nessun articolo in {PERCORSO_CONTENT_NOTIZIE}/')
         return []
 
     for filepath in percorsi:
         try:
             post = frontmatter.load(filepath)
             slug = os.path.splitext(os.path.basename(filepath))[0]
-
             notizie.append({
                 'slug':     slug,
                 'titolo':   post.get('title', '') or '',
@@ -333,80 +206,62 @@ def carica_notizie_redazione() -> list:
         except Exception as e:
             print(f'  ✗ Errore lettura {filepath}: {e}')
 
-    print(f'  ✓ Notizie redazione: {len(notizie)} articoli caricati')
+    print(f'  ✓ Notizie redazione: {len(notizie)} articoli')
     return notizie
 
-
-# ─── SALVATAGGIO JSON ──────────────────────────────────────────────────────────
+# ─── SALVATAGGIO ────────────────────────────────────────────────
 
 def salva_json(percorso: str, dati: dict) -> None:
-    """
-    Salva un dizionario come file JSON con indentazione leggibile.
-    Crea le directory necessarie se non esistono.
-    """
     os.makedirs(os.path.dirname(percorso), exist_ok=True)
     with open(percorso, 'w', encoding='utf-8') as f:
         json.dump(dati, f, ensure_ascii=False, indent=2)
     print(f'  ✓ Salvato: {percorso}')
 
-
-# ─── MAIN ──────────────────────────────────────────────────────────────────────
+# ─── MAIN ───────────────────────────────────────────────────────
 
 def main():
-    # Timestamp dell'aggiornamento (formato leggibile per l'utente)
     ora = datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')
     print(f'\n🚀  Calcio H24 — Aggiornamento del {ora}\n')
 
-    # ── 1. CLASSIFICHE ─────────────────────────────────────────────────────────
-    print('📊  Scaricamento classifiche...')
+    # 1. Classifiche
+    print('📊  Classifiche...')
     serie_a   = scarica_classifica(LEAGUE_SERIE_A, STAGIONE)
     champions = scarica_classifica(LEAGUE_CHAMPIONS, STAGIONE)
-
     salva_json(PERCORSO_CLASSIFICHE, {
         'aggiornamento': ora,
         'serie_a':       serie_a,
         'champions':     champions,
     })
 
-    # ── 2. FEED RSS ─────────────────────────────────────────────────────────────
-    print('\n📰  Scaricamento feed RSS...')
+    # 2. Feed RSS
+    print('\n📰  Feed RSS...')
     notizie_rss = []
     for nome, url in RSS_FEEDS.items():
         notizie_rss.extend(scarica_feed_rss(nome, url))
 
-    # ── 3. NEWSAPI ──────────────────────────────────────────────────────────────
-    print('\n🔍  Scaricamento NewsAPI...')
-    notizie_news = []
-    for keyword in NEWSAPI_KEYWORDS:
-        notizie_news.extend(scarica_newsapi(keyword))
-
-    # Combina RSS + NewsAPI e rimuove duplicati per URL
+    # Deduplicazione per URL
     visti = set()
-    notizie_combinate = []
-    for n in notizie_rss + notizie_news:
+    notizie_uniche = []
+    for n in notizie_rss:
         link = n.get('link', '')
         if link and link not in visti:
             visti.add(link)
-            notizie_combinate.append(n)
+            notizie_uniche.append(n)
 
-    print(f'\n  ✓ Totale notizie dalla rete (deduplicato): {len(notizie_combinate)}')
-
+    print(f'\n  ✓ Totale notizie (deduplicato): {len(notizie_uniche)}')
     salva_json(PERCORSO_NOTIZIE_RSS, {
         'aggiornamento': ora,
-        'dalla_rete':    notizie_combinate,
+        'dalla_rete':    notizie_uniche,
     })
 
-    # ── 4. NOTIZIE REDAZIONE (DECAP CMS) ───────────────────────────────────────
-    print('\n✍️   Caricamento notizie redazione...')
-    notizie_redazione = carica_notizie_redazione()
-
+    # 3. Notizie redazione
+    print('\n✍️   Notizie redazione...')
     salva_json(PERCORSO_NOTIZIE_RED, {
         'aggiornamento': ora,
-        'notizie':       notizie_redazione,
+        'notizie':       carica_notizie_redazione(),
     })
 
-    # ── Fine ────────────────────────────────────────────────────────────────────
-    print(f'\n✅  Aggiornamento completato — {ora}\n')
+    print(f'\n✅  Completato — {ora}\n')
 
 
 if __name__ == '__main__':
