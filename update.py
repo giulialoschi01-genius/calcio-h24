@@ -183,7 +183,22 @@ def e_notizia_calcio(titolo: str, sommario: str) -> bool:
     testo = (titolo + ' ' + sommario).lower()
     return any(kw in testo for kw in KEYWORDS_CALCIO)
 
-
+def e_notizia_recente(entry, giorni_max: int = 7) -> bool:
+    """
+    Restituisce True se la notizia è stata pubblicata
+    negli ultimi 'giorni_max' giorni.
+    Se la data non è leggibile, accetta la notizia per sicurezza.
+    """
+    import time
+    data_raw = entry.get('published_parsed') or entry.get('updated_parsed')
+    if not data_raw:
+        return True  # data assente → non escludere
+    try:
+        eta_giorni = (time.time() - time.mktime(data_raw)) / 86400
+        return eta_giorni <= giorni_max
+    except Exception:
+        return True  # errore di parsing → non escludere
+      
 def scarica_feed_rss(nome: str, url: str) -> list:
     """
     Analizza un feed RSS con feedparser.
@@ -204,6 +219,9 @@ def scarica_feed_rss(nome: str, url: str) -> list:
 
             # Salta notizie non calcistiche
             if not e_notizia_calcio(titolo, sommario):
+                continue
+            # Scarta notizie più vecchie di 7 giorni
+            if not e_notizia_recente(entry):
                 continue
 
             immagine = estrai_immagine_entry(entry)
