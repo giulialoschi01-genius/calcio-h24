@@ -150,30 +150,18 @@ def scarica_feed_rss(nome: str, url: str) -> list:
         if not feed.entries:
             print(f'  ✗ {nome}: feed vuoto o irraggiungibile (url: {url})')
             return []
-
-        
-        for entry in feed.entries[:MAX_PER_FEED * 2]:
+            
+        for entry in feed.entries[:MAX_PER_FEED]:
             titolo = (entry.get('title', '') or '').strip()
             if not titolo:
                 continue
-
-            # Filtro data: scarta notizie più vecchie di 10 giorni.
-            # Usa published_parsed (già convertito da feedparser in struct_time).
-            # Se la data manca o non è leggibile, accetta la notizia.
-            data_parsed = entry.get('published_parsed') or entry.get('updated_parsed')
-            if data_parsed:
-                try:
-                    eta_giorni = (time.time() - time.mktime(data_parsed)) / 86400
-                    if eta_giorni > 30:
-                        continue
-                except Exception:
-                    pass  # data non convertibile → accetta
 
             link     = entry.get('link', '')
             data_raw = entry.get('published', entry.get('updated', ''))
             immagine = estrai_immagine_entry(entry)
 
             notizie.append({
+
                 
                 
                 'fonte':    nome,
