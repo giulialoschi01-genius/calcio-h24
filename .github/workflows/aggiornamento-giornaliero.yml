@@ -34,7 +34,7 @@ jobs:
 
       - name: Esegui update.py
         env:
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
         run: python update.py
 
