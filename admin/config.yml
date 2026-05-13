@@ -1,30 +1,38 @@
 # ═══════════════════════════════════════════════════════════════
-# admin/config.yml — Decap CMS per Calcio H24
+# admin/config.yml — Sveltia CMS per Calcio H24
 #
-# Backend: GitHub con OAuth tramite il proxy gratuito di Netlify.
-# NON è necessario ospitare il sito su Netlify.
+# Backend: GitHub OAuth (proxy gestito da Sveltia, niente da configurare).
+# Il sito è ospitato su GitHub Pages (non Netlify).
 #
-# SETUP OBBLIGATORIO (una sola volta):
+# SETUP NECESSARIO (una sola volta):
 # ─────────────────────────────────────
-# 1. Vai su: https://github.com/settings/developers
-#    → "OAuth Apps" → "New OAuth App"
-# 2. Compila così:
-#    - Application name: Calcio H24 CMS
-#    - Homepage URL: https://TUO-USERNAME.github.io/calcio-h24
-#    - Authorization callback URL: https://api.netlify.com/auth/done
-# 3. Clicca "Register application"
-#    → copia il "Client ID" che ti viene mostrato
-# 4. Sostituisci TUO-USERNAME qui sotto con il tuo username GitHub
+# 1. Aggiungi l'utente come "Collaborator" del repo:
+#    https://github.com/giulialoschi01-genius/calcio-h24/settings/access
+#    Click "Add people" → inserisci username GitHub → ruolo "Write"
+# 2. L'utente accetta l'invito via email
+# 3. Va su https://giulialoschi01-genius.github.io/calcio-h24/admin/
+#    → click "Sign in with GitHub" → autorizza Sveltia
 # ═══════════════════════════════════════════════════════════════
+
 backend:
   name: github
   repo: giulialoschi01-genius/calcio-h24
   branch: main
 
+# URL del sito pubblicato — abilita il pulsante "Visualizza sul sito"
+site_url: https://giulialoschi01-genius.github.io/calcio-h24/
+display_url: https://giulialoschi01-genius.github.io/calcio-h24/
+
+# Cartella dove vengono caricate le immagini
 media_folder: "images/uploads"
 public_folder: "images/uploads"
 
+# Lingua interfaccia
 locale: it
+
+# Mostra l'anteprima della notizia mentre si scrive
+editor:
+  preview: true
 
 collections:
   - name: "notizie"
@@ -35,35 +43,49 @@ collections:
     slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     sortable_fields: ["date", "title"]
     summary: "{{title}} — {{date}}"
+
     fields:
+
+      # ── 1. TITOLO ──────────────────────────────────────────
       - label: "Titolo"
         name:  "title"
         widget: "string"
+        hint:  "Cosa è successo? Sii chiaro e diretto. Esempio: \"Modena, vittoria all'ultimo minuto contro il Cesena\""
+        pattern: ['.{10,120}', "Il titolo deve avere tra 10 e 120 caratteri"]
 
+      # ── 2. DATA ────────────────────────────────────────────
+      # Se lasciato vuoto, Sveltia usa la data/ora di adesso
       - label: "Data di pubblicazione"
         name:  "date"
         widget: "datetime"
         format: "YYYY-MM-DD"
         date_format: "DD/MM/YYYY"
         time_format: false
+        hint:  "Lascia oggi se la notizia è di oggi. Altrimenti clicca e scegli dal calendario."
 
-      - label: "Autore"
-        name:  "author"
-        widget: "string"
-        default: "Redazione Calcio H24"
-        required: false
-
+      # ── 3. IMMAGINE ────────────────────────────────────────
       - label: "Immagine di copertina"
         name:  "image"
         widget: "image"
-        required: false
+        required: true
+        hint:  "Foto larga almeno 800 pixel. Verrà ritagliata in formato 16:9 (rettangolo orizzontale). Niente loghi piccoli, niente screenshot del telefono."
 
+      # ── 4. SOMMARIO ────────────────────────────────────────
       - label: "Sommario"
         name:  "description"
         widget: "text"
-        required: false
+        required: true
+        pattern: ['.{30,300}', "Il sommario deve avere tra 30 e 300 caratteri"]
+        hint:  "1-2 frasi che riassumono la notizia. Apparirà sotto al titolo nella home, senza dover aprire l'articolo."
 
-      - label: "Contenuto articolo"
+      # ── 5. TESTO ───────────────────────────────────────────
+      - label: "Testo della notizia"
         name:  "body"
         widget: "markdown"
-        hint:  "Corpo dell'articolo — usa il toolbar per formattare"
+        hint:  "L'articolo completo. Usa i pulsanti in alto per Grassetto (B), Corsivo (I), liste e link. Per andare a capo premi Invio due volte."
+
+      # ── AUTORE (nascosto, popolato in automatico) ─────────
+      - label: "Autore"
+        name:  "author"
+        widget: "hidden"
+        default: "Redazione Calcio H24"
