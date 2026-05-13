@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    app.js — Calcio H24
    Carica dati pre-generati da update.py e li renderizza nel DOM.
-   Gestisce: tab classifiche, notizie rete, notizie redazione,
+   Gestisce: notizie rete, notizie redazione,
              menu mobile, scroll header, footer aggiornamento.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -9,7 +9,6 @@
 
 /* ── Configurazione percorsi file JSON ───────────────────────── */
 const CFG = {
-  classifiche:      'data/classifiche.json',
   notizieRete:      'data/notizie_rss.json',
   notizieRedazione: 'data/notizie_redazione.json',
   maxNotizieRete:   20,   // notizie esterne da mostrare
@@ -22,9 +21,7 @@ const CFG = {
 document.addEventListener('DOMContentLoaded', () => {
   inizializzaMenuMobile();
   inizializzaScrollHeader();
-  inizializzaTab();
   inizializzaNavSmooth();
-  caricaClassifiche();
   caricaNotizieRete();
   caricaNotizieRedazione();
 });
@@ -93,163 +90,6 @@ function inizializzaNavSmooth() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   TAB CLASSIFICHE — Selezione Serie A / Champions
-══════════════════════════════════════════════════════════════ */
-function inizializzaTab() {
-  const btns   = document.querySelectorAll('.tab-btn');
-  const panels = document.querySelectorAll('.tab-content');
-  const legenda = document.getElementById('legenda-zone');
-
-  btns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.tab;
-
-      // Aggiorna stato bottoni
-      btns.forEach(b => {
-        b.classList.toggle('active', b === btn);
-        b.setAttribute('aria-selected', String(b === btn));
-      });
-
-      // Mostra il pannello corretto, nasconde gli altri
-      panels.forEach(p => p.classList.toggle('active', p.id === `tab-${target}`));
-
-      // La legenda zone è significativa solo per la Serie A
-      if (legenda) legenda.style.opacity = target === 'serie-a' ? '1' : '0.3';
-    });
-  });
-}
-
-/* ══════════════════════════════════════════════════════════════
-   CLASSIFICHE — Fetch + render
-══════════════════════════════════════════════════════════════ */
-async function caricaClassifiche() {
-  try {
-    const res  = await fetch(CFG.classifiche);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const dati = await res.json();
-
-    // Aggiorna la nota di aggiornamento e il footer
-    if (dati.aggiornamento) {
-      const nota = document.getElementById('aggiornamento-classifiche');
-      if (nota) nota.textContent = `Dati aggiornati: ${dati.aggiornamento}`;
-
-      const footer = document.getElementById('ultimo-aggiornamento');
-      if (footer) footer.textContent = dati.aggiornamento;
-    }
-
-    renderClassifica('classifica-serie-a',  dati.serie_a  || [], 'serie_a');
-    renderClassifica('classifica-champions', dati.champions || [], 'champions');
-
-  } catch (err) {
-    console.error('[CalcioH24] Errore classifiche:', err);
-    ['classifica-serie-a', 'classifica-champions'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = '<div class="errore">⚠️ Classifica non disponibile. Aggiornamento previsto domani alle 07:00.</div>';
-    });
-  }
-}
-
-/**
- * Costruisce e inserisce la tabella classifica nel DOM.
- * @param {string} id      - ID dell'elemento contenitore
- * @param {Array}  squadre - Array di oggetti squadra normalizzati
- * @param {string} tipo    - 'serie_a' | 'champions' (per zone colorate)
- */
-function renderClassifica(id, squadre, tipo) {
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  if (!squadre || squadre.length === 0) {
-    el.innerHTML = '<div class="nessuna-notizia">⏳ Nessun dato disponibile. Il primo aggiornamento avverrà domani alle 07:00.</div>';
-    return;
-  }
-
-  const righe = squadre.map(s => {
-    const zona  = calcolaZona(s.posizione, tipo, squadre.length);
-    const forma = renderForma(s.forma || '');
-    const logo  = s.logo
-      ? `<img src="${s.logo}" alt="" class="logo-squadra" loading="lazy" onerror="this.style.visibility='hidden'">`
-      : '<span style="width:24px;display:inline-block"></span>';
-
-    return `
-      <tr class="${zona}">
-        <td class="pos">${s.posizione}</td>
-        <td>
-          <div class="cella-squadra">${logo}
-            <span class="nome-squadra">${sanifica(s.squadra)}</span>
-          </div>
-        </td>
-        <td>${s.giocate}</td>
-        <td>${s.vinte}</td>
-        <td class="col-mobile-hidden">${s.pareggiate}</td>
-        <td class="col-mobile-hidden">${s.perse}</td>
-        <td class="col-mobile-hidden">${s.gol_fatti}</td>
-        <td class="col-mobile-hidden">${s.gol_subiti}</td>
-        <td class="col-mobile-hidden">${s.differenza_reti >= 0 ? '+' : ''}${s.differenza_reti}</td>
-        <td><div class="forma">${forma}</div></td>
-        <td class="punti-bold">${s.punti}</td>
-      </tr>`;
-  }).join('');
-
-  el.innerHTML = `
-    <table class="classifica-table" role="table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th style="text-align:left">Squadra</th>
-          <th title="Partite giocate">PG</th>
-          <th title="Vittorie">V</th>
-          <th class="col-mobile-hidden" title="Pareggi">N</th>
-          <th class="col-mobile-hidden" title="Sconfitte">P</th>
-          <th class="col-mobile-hidden" title="Gol fatti">GF</th>
-          <th class="col-mobile-hidden" title="Gol subiti">GS</th>
-          <th class="col-mobile-hidden" title="Differenza reti">DR</th>
-          <th title="Forma recente (ultime 5)">Forma</th>
-          <th title="Punti">Pt</th>
-        </tr>
-      </thead>
-      <tbody>${righe}</tbody>
-    </table>`;
-}
-
-/**
- * Restituisce la classe CSS per la zona di classifica.
- * Per la Serie A: Champions (1-4), Europa (5), Conference (6), Retrocessione (ultimi 3).
- * Per la Champions (fase campionato 2024-25): prime 8 agli ottavi, 9-24 playoff, 25-36 fuori.
- */
-function calcolaZona(pos, tipo, totale) {
-  if (tipo === 'serie_a') {
-    if (pos <= 4)             return 'zona-champions';
-    if (pos === 5)            return 'zona-europa';
-    if (pos === 6)            return 'zona-conference';
-    if (pos > totale - 3)     return 'zona-retrocessione';
-  }
-  // Champions League: formato campionato unico 2024-25
-  if (tipo === 'champions') {
-    if (pos <= 8)             return 'zona-champions';   // ottavi diretti
-    if (pos <= 24)            return 'zona-europa';       // playoff
-    return 'zona-retrocessione'; // eliminati
-  }
-  return '';
-}
-
-/**
- * Genera i quadratini colorati per la forma recente (es. "WDWLW").
- * Prende solo le ultime 5 partite.
- */
-function renderForma(formaStr) {
-  return formaStr
-    .slice(-5)
-    .split('')
-    .map(f => {
-      const cls   = f === 'W' ? 'forma-w' : f === 'D' ? 'forma-d' : 'forma-l';
-      const label = f === 'W' ? 'Vittoria' : f === 'D' ? 'Pareggio' : 'Sconfitta';
-      return `<span class="${cls}" title="${label}"></span>`;
-    })
-    .join('');
-}
-
-/* ══════════════════════════════════════════════════════════════
    NOTIZIE DALLA RETE — Fetch + render
    Mostra: titolo, immagine anteprima, fonte, link esterno.
    NESSUN testo integrale (rispetto del copyright degli editori).
@@ -262,6 +102,12 @@ async function caricaNotizieRete() {
     const res  = await fetch(CFG.notizieRete);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const dati = await res.json();
+
+    // Aggiorna data nel footer con timestamp ultimo aggiornamento RSS
+    if (dati.aggiornamento) {
+      const footer = document.getElementById('ultimo-aggiornamento');
+      if (footer) footer.textContent = dati.aggiornamento;
+    }
 
     const lista = (dati.dalla_rete || []).slice(0, CFG.maxNotizieRete);
 
