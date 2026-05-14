@@ -35,6 +35,26 @@ editor:
   preview: true
 
 collections:
+
+  # ── HOMEPAGE ────────────────────────────────────────────────────
+  - name: "homepage"
+    label: "🏠 Homepage"
+    files:
+      - name: "homepage"
+        label: "Testi Homepage"
+        file: "data/homepage.json"
+        format: json
+        fields:
+          - label: "Slogan (sotto al logo)"
+            name:  "sottotitolo"
+            widget: "string"
+            hint:  "Il testo piccolo accanto al pallone. Es: Il calcio, 24 ore su 24"
+          - label: "Testo Chi Siamo"
+            name:  "testo"
+            widget: "text"
+            hint:  "Il paragrafo descrittivo nella sezione Chi Siamo."
+
+  # ── NOTIZIE ─────────────────────────────────────────────────────
   - name: "notizie"
     label: "📝 Le Nostre Notizie"
     label_singular: "Notizia"
@@ -74,9 +94,8 @@ collections:
       - label: "Sommario"
         name:  "description"
         widget: "text"
-        required: true
-        pattern: ['.{30,300}', "Il sommario deve avere tra 30 e 300 caratteri"]
-        hint:  "1-2 frasi che riassumono la notizia. Apparirà sotto al titolo nella home, senza dover aprire l'articolo."
+        required: false
+        hint:  "Facoltativo. 1-2 frasi che riassumono la notizia. Apparirà sotto al titolo nella home."
 
       # ── 5. TESTO ───────────────────────────────────────────
       - label: "Testo della notizia"

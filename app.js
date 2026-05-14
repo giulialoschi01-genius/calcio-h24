@@ -22,9 +22,25 @@ document.addEventListener('DOMContentLoaded', () => {
   inizializzaMenuMobile();
   inizializzaScrollHeader();
   inizializzaNavSmooth();
+  caricaHomepage();
   caricaNotizieRete();
   caricaNotizieRedazione();
 });
+
+/* ══════════════════════════════════════════════════════════════
+   HOMEPAGE — Carica testi editabili da data/homepage.json
+══════════════════════════════════════════════════════════════ */
+async function caricaHomepage() {
+  try {
+    const res = await fetch('data/homepage.json');
+    if (!res.ok) return;
+    const d = await res.json();
+    const elSottotitolo = document.getElementById('hero-sottotitolo');
+    const elTesto       = document.getElementById('hero-testo');
+    if (elSottotitolo && d.sottotitolo) elSottotitolo.textContent = '⚽ ' + d.sottotitolo;
+    if (elTesto && d.testo)             elTesto.textContent = d.testo;
+  } catch {}
+}
 
 /* ══════════════════════════════════════════════════════════════
    MENU MOBILE — Apertura/chiusura hamburger
