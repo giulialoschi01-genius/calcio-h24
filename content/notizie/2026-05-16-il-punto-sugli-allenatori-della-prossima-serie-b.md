@@ -6,7 +6,7 @@ description: il punto sugli allenatori della prossima Serie B
 author: Redazione Calcio H24
 ---
 
-## **_Il punto sugli allenatori di Serie B_** 
+## \*\*_Il punto sugli allenatori di Serie B_\*\* 
 
 ![Alberto Aquilani, allenatore del Catanzaro](/images/uploads/l-allenatore-della-reggiana-pierpaolo-bisoli.webp)
 
