@@ -18,6 +18,7 @@ backend:
   name: github
   repo: giulialoschi01-genius/calcio-h24
   branch: main
+  base_url: https://api.sveltia.com
 
 # URL del sito pubblicato — abilita il pulsante "Visualizza sul sito"
 site_url: https://giulialoschi01-genius.github.io/calcio-h24/
