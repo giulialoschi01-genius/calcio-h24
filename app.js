@@ -147,15 +147,17 @@ function renderCardNotiziaRete(n) {
   const titolo = sanifica(n.titolo || 'Leggi la notizia →');
   const fonte  = sanifica(n.fonte  || '');
   const data   = formattaData(n.data);
+  const link   = urlSicuro(n.link);
 
   // Immagine anteprima — se assente mostra placeholder con emoji
-  const img = n.immagine
-    ? `<img src="${n.immagine}" alt="" class="card-notizia-img" loading="lazy"
+  const immagine = sanifica(n.immagine || '');
+  const img = immagine
+    ? `<img src="${immagine}" alt="" class="card-notizia-img" loading="lazy"
          onerror="this.outerHTML='<div class=\\'card-notizia-img-placeholder\\'>⚽</div>'">`
     : '<div class="card-notizia-img-placeholder">⚽</div>';
 
   return `
-    <a href="${n.link}" target="_blank" rel="noopener noreferrer" class="card-notizia"
+    <a href="${link}" target="_blank" rel="noopener noreferrer" class="card-notizia"
        title="Leggi su ${fonte}">
       ${img}
       <div class="card-notizia-body">
@@ -213,8 +215,9 @@ function renderCardNostraNotiziaId(n) {
   const sommario = sanifica(n.sommario || '');
   const data     = formattaData(n.data);
 
-  const img = n.immagine
-    ? `<img src="${n.immagine}" alt="${titolo}" class="card-nostra-img" loading="lazy">`
+  const immagine = sanifica(n.immagine || '');
+  const img = immagine
+    ? `<img src="${immagine}" alt="${titolo}" class="card-nostra-img" loading="lazy">`
     : '';
 
   return `
@@ -265,4 +268,11 @@ function sanifica(testo) {
   const div = document.createElement('div');
   div.textContent = testo;
   return div.innerHTML;
+}
+
+function urlSicuro(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? sanifica(url) : '#';
+  } catch { return '#'; }
 }
