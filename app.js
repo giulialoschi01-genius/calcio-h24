@@ -121,7 +121,7 @@ async function caricaNotizieRete() {
 
     // Aggiorna data nel footer con timestamp ultimo aggiornamento RSS
     if (dati.aggiornamento) {
-      const footer = document.getElementById('ultimo-aggiornamento');
+      const footer = document.getElementById('ultimo-aggiornamento') || document.getElementById('last-update');
       if (footer) footer.textContent = dati.aggiornamento;
     }
 
