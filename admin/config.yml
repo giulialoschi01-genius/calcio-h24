@@ -54,6 +54,21 @@ collections:
             widget: "text"
             hint:  "Il paragrafo descrittivo nella sezione Chi Siamo."
 
+  # ── SONDAGGI ────────────────────────────────────────────────────
+  - name: "sondaggi"
+    label: "🗳️ Sondaggi"
+    files:
+      - name: "sondaggio_attivo"
+        label: "Sondaggio Attivo (Tally)"
+        file: "data/sondaggio.json"
+        format: json
+        fields:
+          - label: "ID Modulo Tally"
+            name: "tally_id"
+            widget: "string"
+            required: false
+            hint: "Solo l'ID del modulo (es: 'wA5B2d' se il link è tally.so/r/wA5B2d). Lascia vuoto per nascondere il sondaggio."
+
   # ── NOTIZIE ─────────────────────────────────────────────────────
   - name: "notizie"
     label: "📝 Le Nostre Notizie"

@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   caricaHomepage();
   caricaNotizieRete();
   caricaNotizieRedazione();
+  caricaSondaggio();
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -232,6 +233,61 @@ function renderCardNostraNotiziaId(n) {
         ${sommario ? `<div class="card-nostra-sommario">${sommario}</div>` : ''}
       </div>
     </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SONDAGGI — Carica e incorpora il modulo Tally attivo
+   Legge l'ID da data/sondaggio.json; se assente mostra placeholder.
+══════════════════════════════════════════════════════════════ */
+async function caricaSondaggio() {
+  const container = document.getElementById('poll-container');
+  if (!container) return;
+
+  try {
+    const res = await fetch('data/sondaggio.json');
+    if (!res.ok) return;
+    const d = await res.json();
+
+    const tallyId = (d.tally_id || '').trim();
+    if (!tallyId) return; // keep placeholder
+
+    container.innerHTML = `
+      <iframe
+        data-tally-src="https://tally.so/embed/${sanifica(tallyId)}?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1"
+        loading="lazy"
+        width="100%"
+        height="300"
+        frameborder="0"
+        marginheight="0"
+        marginwidth="0"
+        title="Sondaggio"
+        style="border:none;min-height:300px;"
+      ></iframe>`;
+
+    // Trigger Tally embed loader
+    const TALLY_SCRIPT = 'https://tally.so/widgets/embed.js';
+    const loadEmbeds = () => {
+      if (typeof Tally !== 'undefined') {
+        Tally.loadEmbeds();
+      } else {
+        container.querySelectorAll('iframe[data-tally-src]:not([src])').forEach(f => {
+          f.src = f.dataset.tallySrc;
+        });
+      }
+    };
+
+    if (document.querySelector(`script[src="${TALLY_SCRIPT}"]`)) {
+      loadEmbeds();
+    } else {
+      const s = document.createElement('script');
+      s.src = TALLY_SCRIPT;
+      s.onload = loadEmbeds;
+      s.onerror = loadEmbeds; // fallback: set src directly
+      document.body.appendChild(s);
+    }
+  } catch (err) {
+    console.error('[CalcioH24] Errore sondaggio:', err);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
